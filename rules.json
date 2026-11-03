@@ -1,0 +1,245 @@
+[
+  {
+    "id": 1,
+    "priority": 2,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||cdn.tinypass.com/api/tinypass.min.js",
+      "resourceTypes": [
+        "script"
+      ],
+      "initiatorDomains": [
+        "uol.com.br"
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 2,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||tm.jsuol.com.br/modules/external/admanager/offerwall.js",
+      "resourceTypes": [
+        "script"
+      ],
+      "initiatorDomains": [
+        "uol.com.br"
+      ]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||experience.tinypass.com/",
+      "resourceTypes": [
+        "xmlhttprequest",
+        "script"
+      ],
+      "initiatorDomains": [
+        "uol.com.br"
+      ]
+    }
+  },
+  {
+    "id": 4,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||buy.tinypass.com/checkout/template/",
+      "resourceTypes": [
+        "sub_frame"
+      ],
+      "initiatorDomains": [
+        "uol.com.br"
+      ]
+    }
+  },
+  {
+    "id": 5,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        {
+          "header": "Content-Security-Policy",
+          "operation": "append",
+          "value": "script-src 'none'"
+        }
+      ]
+    },
+    "condition": {
+      "regexFilter": "^https://([a-z0-9-]+\\.)*uol\\.com\\.br/.*/20[0-9]{2}/[0-9]{2}/[0-9]{2}/[^/?#]+\\.g?html?([?#]|$)",
+      "resourceTypes": [
+        "main_frame",
+        "sub_frame",
+        "other",
+        "xmlhttprequest"
+      ]
+    }
+  },
+  {
+    "id": 6,
+    "priority": 3,
+    "action": {
+      "type": "allow"
+    },
+    "condition": {
+      "regexFilter": "[?&]original=1",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 7,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "initiatorDomains": [
+        "uol.com.br",
+        "globo.com"
+      ],
+      "resourceTypes": [
+        "script",
+        "xmlhttprequest",
+        "sub_frame",
+        "image",
+        "ping",
+        "other"
+      ],
+      "requestDomains": [
+        "doubleclick.net",
+        "googlesyndication.com",
+        "googletagmanager.com",
+        "google-analytics.com",
+        "fundingchoicesmessages.google.com",
+        "2mdn.net",
+        "imasdk.googleapis.com",
+        "amazon-adsystem.com",
+        "criteo.com",
+        "criteo.net",
+        "pubmatic.com",
+        "openx.net",
+        "openxcdn.net",
+        "rubiconproject.com",
+        "adnxs.com",
+        "smartadserver.com",
+        "doubleverify.com",
+        "permutive.app",
+        "permutive.com",
+        "cxense.com",
+        "chartbeat.com",
+        "scorecardresearch.com",
+        "clarity.ms",
+        "facebook.net",
+        "mrf.io",
+        "id5-sync.com",
+        "crwdcntrl.net",
+        "analytics.yahoo.com",
+        "privacymanager.io",
+        "im-apps.net",
+        "creativecdn.com",
+        "mgaru.dev",
+        "tinypass.com",
+        "taboola.com",
+        "outbrain.com",
+        "adsrvr.org",
+        "tm.jsuol.com.br",
+        "me.jsuol.com.br",
+        "ads-library.globo.com",
+        "pendo.io",
+        "dv.tech",
+        "aswpsdkus.com"
+      ]
+    }
+  },
+  {
+    "id": 8,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        {
+          "header": "Content-Security-Policy",
+          "operation": "append",
+          "value": "script-src 'none'"
+        }
+      ]
+    },
+    "condition": {
+      "regexFilter": "^https://www\\.uol\\.com\\.br/?([?#]|$)",
+      "resourceTypes": [
+        "main_frame",
+        "sub_frame",
+        "other",
+        "xmlhttprequest"
+      ]
+    }
+  },
+  {
+    "id": 9,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        {
+          "header": "Content-Security-Policy",
+          "operation": "append",
+          "value": "script-src 'none'"
+        }
+      ]
+    },
+    "condition": {
+      "regexFilter": "^https://([a-z0-9-]+\\.)*globo\\.com/.*\\.ghtml([?#]|$)",
+      "resourceTypes": [
+        "main_frame",
+        "sub_frame",
+        "other",
+        "xmlhttprequest"
+      ]
+    }
+  },
+  {
+    "id": 10,
+    "priority": 2,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||static.infoglobo.com.br/paywall/",
+      "resourceTypes": [
+        "script"
+      ],
+      "initiatorDomains": [
+        "globo.com"
+      ]
+    }
+  },
+  {
+    "id": 11,
+    "priority": 2,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "regexFilter": "^https://([a-z0-9-]+\\.)*(globo\\.com|uol\\.com\\.br)/(sw|service-worker|OneSignalSDKWorker)[^/]*\\.js",
+      "resourceTypes": [
+        "script",
+        "other",
+        "xmlhttprequest"
+      ]
+    }
+  }
+]

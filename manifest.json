@@ -1,0 +1,84 @@
+{
+  "manifest_version": 3,
+  "name": "Silêncio",
+  "version": "2.2.0",
+  "description": "Lê UOL e Globo em silêncio: matérias só com o texto, sem scripts, anúncios, popups nem paywall.",
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback",
+    "storage",
+    "scripting",
+    "browsingData"
+  ],
+  "host_permissions": [
+    "*://*.uol.com.br/*",
+    "*://*.globo.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Silêncio",
+    "default_icon": {
+      "16": "icons/cinza-16.png",
+      "32": "icons/cinza-32.png",
+      "48": "icons/cinza-48.png",
+      "128": "icons/cinza-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/cinza-16.png",
+    "32": "icons/cinza-32.png",
+    "48": "icons/cinza-48.png",
+    "128": "icons/cinza-128.png"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "bloqueio",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "leitura.css"
+      ],
+      "matches": [
+        "*://*.uol.com.br/*",
+        "*://*.globo.com/*"
+      ]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.uol.com.br/*",
+        "*://*.globo.com/*"
+      ],
+      "run_at": "document_start",
+      "all_frames": false,
+      "js": [
+        "sites.js",
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ]
+    },
+    {
+      "matches": [
+        "*://*.uol.com.br/*",
+        "*://*.globo.com/*"
+      ],
+      "run_at": "document_end",
+      "all_frames": false,
+      "js": [
+        "sites.js",
+        "leitura.js"
+      ]
+    }
+  ]
+}

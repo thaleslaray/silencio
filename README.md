@@ -1,0 +1,60 @@
+# Silêncio
+
+Extensão do Chrome (Manifest V3) que abre as matérias do **UOL** e do **grupo Globo** (globo.com, g1, ge, O Globo, gshow etc.) em um modo leitura, estilo Leitor do Safari: só o texto, sem scripts, anúncios, popups nem paywall.
+
+## Sites cobertos
+
+| Site | Hosts | Matérias |
+| --- | --- | --- |
+| UOL | `*.uol.com.br` | `/…/AAAA/MM/DD/<slug>.htm` (e `.html`, `.ghtm`) |
+| Globo | `*.globo.com` (g1, ge, oglobo, gshow…) | `/…/AAAA/MM/DD/<slug>.ghtml` |
+
+A configuração de cada site (padrão de URL, seletores de título, autor, data e corpo, contagem de anúncios) fica em `sites.js`. Para cobrir outro site, basta acrescentar um objeto a `SITES` e o domínio em `manifest.json` e `rules.json`.
+
+## O que faz
+
+A extensão trabalha em três camadas:
+
+1. **Modo leitura nas matérias** (`rules.json` + `sites.js` + `content.js` + `leitura.js` + `leitura.css`). Nas páginas de matéria (`https://<sub>.uol.com.br/.../AAAA/MM/DD/<slug>.htm` ou `https://<sub>.globo.com/.../AAAA/MM/DD/<slug>.ghtml`), uma regra de rede acrescenta o cabeçalho `Content-Security-Policy: script-src 'none'`, e o Chrome recusa todo script da página, inline e externo (os scripts da extensão continuam rodando). Em seguida o `leitura.js` troca a página por uma versão limpa, só com título, autor, data, imagens e texto, usando o `leitura.css`. Para ver a página original, acrescente `?original=1` na URL ou clique em **Ver original** (na barra de cima ou no fim da matéria). A barra também tem os botões **A−** e **A+** para o tamanho do texto, que fica salvo. Páginas com data na URL mas sem matéria (galeria, vídeo) mostram um aviso com o link para a original.
+2. **Bloqueio de domínios de anúncio e rastreio** (`rules.json`) em todo o UOL e na Globo: Google Ads e Analytics, Criteo, Taboola, Outbrain, Permutive, Chartbeat, `ads-library.globo.com`, Pendo, entre outros. Os domínios `glbimg.com` (imagens e CSS da Globo) não são bloqueados. Nas páginas que não são matéria, nada muda além desse bloqueio e do CSS que esconde espaços de anúncio.
+3. **Paywall e DOM**, como antes. A rede bloqueia o script do Piano Composer (`cdn.tinypass.com/api/tinypass.min.js`), o Offerwall do Google (`offerwall.js`), o script de paywall do O Globo (`static.infoglobo.com.br/paywall/`), as chamadas ao `experience.tinypass.com` e o iframe de checkout (`buy.tinypass.com/checkout/template/`). Caso algum elemento escape (`div.tp-modal`, `div.tp-backdrop`, `div.barreiraJornada` do O Globo, `.newsletter-g1-modal__overlay` do g1), o `content.js` + `content.css` o escondem e removem do DOM e desfazem a trava de rolagem do `body`. Um observador de mutações monitora a página por 60 segundos e, depois, uma verificação a cada 2 segundos roda por mais 2 minutos.
+
+O texto da matéria já vem completo no HTML do servidor; a extensão só tira o que está em volta.
+
+## Contador no ícone
+
+O ícone da extensão na barra do Chrome mostra o que foi removido:
+
+- **Cinza**: nada foi removido nesta aba.
+- **Verde com número**: quantos anúncios e popups foram removidos nesta aba. Nas matérias, conta os espaços de anúncio da página original mais o paywall, quando a matéria é exclusiva para assinantes (na Globo: `glb-ad` e contêineres do tag manager, mais o script de paywall). Fora das matérias, contam o paywall do Piano, o Offerwall do Google e o script de paywall da Globo; as requisições secundárias (`experience.tinypass.com`, iframe de checkout e domínios de anúncio) não entram na conta.
+- **Passar o mouse** sobre o ícone mostra o total acumulado desde a instalação.
+
+A contagem da aba volta a zero quando você navega para outra página. O contador de regras de rede só funciona com a extensão instalada sem compactação (modo desenvolvedor).
+
+## Homes
+
+- **UOL** (`www.uol.com.br`): recebe a trava `script-src 'none'`. Manchetes, links e fotos já vêm prontos do servidor, então a home abre inteira, só que sem anúncios, vídeos automáticos, banner de cookies e rastreio. Os espaços reservados aos anúncios (`.cardAd`, `.jupiter-ads` etc.) são escondidos por CSS. O que precisa de script (player ao vivo, carregar mais notícias ao rolar, busca) não funciona; `?original=1` abre a home normal.
+- **Globo** (`www.globo.com`): **não** recebe a trava de scripts, porque a home é montada em boa parte por script (esqueletos `post--loading` e `banner-skeleton`) e ficaria vazia. Ali só valem o bloqueio de domínios de anúncio e rastreio e o CSS que esconde `glb-ad`, `[id^="banner_"]` e afins.
+
+## Como instalar (sem compactação)
+
+1. Abra `chrome://extensions` no Chrome.
+2. Ative o **Modo do desenvolvedor** (canto superior direito).
+3. Clique em **Carregar sem compactação**.
+4. Escolha a pasta da extensão (`sem-porteira-uol`).
+
+### Depois de atualizar os arquivos
+
+Sempre que alterar qualquer arquivo da extensão, clique no botão de **recarregar** (seta circular) do card da extensão em `chrome://extensions`. Sem isso, o Chrome continua usando a versão antiga.
+
+## Como conferir que funcionou
+
+1. Abra uma coluna do UOL com a tag **"Exclusivo para assinantes"** ou uma matéria do g1 ou do O Globo.
+2. A página deve abrir no modo leitura, com a barra "Modo leitura · Silêncio" no topo e o texto inteiro, sem o modal "Continue sua leitura".
+3. Clique em **Ver original** (ou acrescente `?original=1` na URL) para comparar com a página do UOL.
+
+Se algo falhar, recarregue a página (Ctrl/Cmd + Shift + R) e confira em `chrome://extensions` se a extensão está ativada.
+
+## Aviso
+
+Nas matérias, como nenhum script roda, **vídeos embutidos, comentários e login não funcionam** no modo leitura. Use **Ver original** (ou `?original=1`) para usar esses recursos. Com o script do Piano bloqueado, o login pelo Piano ID (UOL) ou pelo Globo ID também pode não funcionar fora do modo leitura; para isso, desative a extensão temporariamente em `chrome://extensions`.

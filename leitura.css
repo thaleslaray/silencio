@@ -1,0 +1,320 @@
+/* Modo leitura — Silêncio
+   Inspirado no Leitor do Safari: uma coluna de texto, papel claro, serifa, nada mais. */
+
+:root {
+  --tamanho: 20px;              /* tamanho do texto corrido; A-/A+ mexem aqui */
+  --bg: #FBF8F2;                /* papel quente */
+  --fg: #1F1F1F;
+  --muted: #6B6B6B;
+  --accent: #1E8E3E;            /* mesmo verde do ícone da extensão */
+  --rule: #E6E0D6;
+  --bar-bg: rgba(251, 248, 242, 0.88);
+  --serif: "Charter", "Iowan Old Style", "Palatino", "Georgia", "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Escuro: pelo sistema (sem escolha manual) ou escolhido no botão */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --bg: #151515;
+    --fg: #E8E6E1;
+    --muted: #9A9A9A;
+    --accent: #4CBF6B;
+    --rule: #2A2A2A;
+    --bar-bg: rgba(21, 21, 21, 0.88);
+  }
+}
+
+:root[data-tema="escuro"] {
+  --bg: #151515;
+  --fg: #E8E6E1;
+  --muted: #9A9A9A;
+  --accent: #4CBF6B;
+  --rule: #2A2A2A;
+  --bar-bg: rgba(21, 21, 21, 0.88);
+}
+
+/* Claro escolhido no botão: sempre as cores do papel, mesmo com o sistema escuro */
+:root[data-tema="claro"] {
+  --bg: #FBF8F2;
+  --fg: #1F1F1F;
+  --muted: #6B6B6B;
+  --accent: #1E8E3E;
+  --rule: #E6E0D6;
+  --bar-bg: rgba(251, 248, 242, 0.88);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  font-family: var(--serif);
+  font-size: var(--tamanho);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Nada que scripts tardios injetarem no body aparece; só a leitura */
+body > :not(.leitura-barra):not(.leitura-coluna):not(.leitura-aviso) {
+  display: none !important;
+}
+
+/* ---------- barra de cima ---------- */
+
+.leitura-barra {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--bar-bg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.leitura-barra .leitura-marca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--fg);
+}
+
+.leitura-barra .leitura-marca::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.leitura-barra .leitura-espaco { flex: 1; }
+
+/* link 'Início': destaque leve pra ser fácil de achar */
+.leitura-barra a.leitura-inicio {
+  color: var(--accent);
+  font-weight: 600;
+  border: 1px solid var(--rule);
+  border-radius: 17px;
+  padding: 7px 12px;
+}
+
+.leitura-barra button {
+  appearance: none;
+  min-width: 34px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.leitura-barra button:hover { border-color: var(--muted); }
+.leitura-barra button:active { background: var(--rule); }
+
+/* botão de tema: tem texto, então é uma pílula e não um círculo */
+.leitura-barra button.leitura-tema {
+  width: auto;
+  padding: 0 12px;
+  border-radius: 17px;
+  font-weight: 500;
+}
+
+.leitura-barra a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.leitura-barra a:hover {
+  color: var(--fg);
+  background: var(--rule);
+}
+
+/* ---------- coluna ---------- */
+
+.leitura-coluna {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 40px 20px 96px;
+}
+
+.leitura-chapeu {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 12px;
+}
+
+.leitura-titulo {
+  font-family: var(--sans);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+  margin: 0 0 20px;
+}
+
+/* subtítulo (linha fina): só algumas matérias têm */
+.leitura-subtitulo {
+  font-family: var(--sans);
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--muted);
+  margin: -6px 0 22px;
+}
+
+.leitura-meta {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--muted);
+  padding-bottom: 20px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.leitura-meta .leitura-autor {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.leitura-meta span + span::before {
+  content: "·";
+  margin: 0 8px;
+  color: var(--muted);
+}
+
+/* ---------- imagens ---------- */
+
+.leitura-coluna figure {
+  margin: 32px 0;
+}
+
+.leitura-coluna figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  background: var(--rule);
+}
+
+.leitura-coluna figcaption {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-top: 10px;
+}
+
+/* ---------- texto ---------- */
+
+.leitura-corpo p {
+  margin: 0 0 1.25em;
+}
+
+.leitura-corpo h2,
+.leitura-corpo h3 {
+  font-family: var(--sans);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 2em 0 0.6em;
+}
+
+.leitura-corpo h2 { font-size: 1.35em; }
+.leitura-corpo h3 { font-size: 1.15em; }
+
+.leitura-corpo a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.leitura-corpo strong, .leitura-corpo b { font-weight: 700; }
+
+.leitura-corpo blockquote {
+  margin: 1.5em 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--accent);
+  color: var(--muted);
+  font-style: italic;
+}
+
+.leitura-corpo ul, .leitura-corpo ol {
+  padding-left: 1.4em;
+  margin: 0 0 1.25em;
+}
+
+.leitura-corpo li { margin-bottom: 0.4em; }
+
+/* ---------- rodapé ---------- */
+
+.leitura-fim {
+  margin-top: 56px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.leitura-fim a { color: var(--accent); }
+
+/* ---------- aviso para páginas que não são matéria ---------- */
+
+.leitura-aviso {
+  position: fixed;
+  left: 0; right: 0; top: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #1F1F1F;
+  color: #FFFFFF;
+  font-family: var(--sans);
+  font-size: 14px;
+}
+
+.leitura-aviso a { color: #7DD98F; font-weight: 600; }
+
+/* ---------- responsivo ---------- */
+
+@media (max-width: 600px) {
+  :root { --tamanho: 18px; }
+  .leitura-coluna { padding: 28px 16px 72px; }
+  .leitura-titulo { font-size: 27px; }
+  .leitura-subtitulo { font-size: 17px; }
+  .leitura-barra { height: 44px; padding: 0 12px; }
+  .leitura-barra .leitura-marca span { display: none; }
+}
+
+@media print {
+  .leitura-barra, .leitura-fim { display: none; }
+  body { background: #fff; color: #000; }
+}

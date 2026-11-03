@@ -1,0 +1,42 @@
+/* Esconde o modal, o fundo escurecido e o iframe do Piano Composer */
+.tp-modal,
+.tp-backdrop,
+.tp-iframe-wrapper {
+  display: none !important;
+}
+
+/* Destrava a rolagem da página */
+body.tp-modal-open,
+html.tp-modal-open,
+body.paywall-open,
+html.paywall-open {
+  overflow: auto !important;
+  position: static !important;
+}
+
+/* Espaços de anúncio (home e demais páginas): sem script eles ficam vazios, então somem */
+.jupiter-ads,
+.solar-ads,
+.ads-content,
+[id^="banner-"],
+.up-floating,
+.magazine-cover,
+.offer-notice,
+.banner-lgpd-consent-container,
+.cardAd,
+.orderSections__section__pub {
+  display: none !important;
+}
+
+/* Globo: anúncios, esqueletos de banner e popups (paywall do O Globo, newsletter do g1) */
+glb-ad,
+.tag-manager-publicidade-container,
+[id^="banner_"],
+.banner-injector,
+.banner-skeleton,
+hr.with-ads,
+.banner_touch_point_subcontent--hide,
+.newsletter-g1-modal__overlay,
+.barreiraJornada {
+  display: none !important;
+}
