@@ -18,14 +18,15 @@
   var agendado = false;
   var jaAvisou = false;
 
-  // Remove o modal do Piano (UOL), a barreira do O Globo e o modal de newsletter do g1; destrava a rolagem
+  // Remove o modal do Piano (UOL), a barreira do O Globo, o modal de newsletter do g1 e a parede de cadastro do NYT; destrava a rolagem
   function limpar() {
     try {
       var removidos = 0;
-      document.querySelectorAll('.tp-modal, .tp-backdrop, .barreiraJornada, .newsletter-g1-modal__overlay').forEach(function (el) {
+      document.querySelectorAll('.tp-modal, .tp-backdrop, .barreiraJornada, .newsletter-g1-modal__overlay, #gateway-content, [data-testid="inline-message"]').forEach(function (el) {
         if (el.classList && (el.classList.contains('tp-modal') ||
             el.classList.contains('barreiraJornada') ||
             el.classList.contains('newsletter-g1-modal__overlay'))) removidos++;
+        else if (el.id === 'gateway-content' || el.getAttribute('data-testid') === 'inline-message') removidos++;
         el.remove();
       });
 

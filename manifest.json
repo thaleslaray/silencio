@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Silêncio",
-  "version": "2.2.0",
-  "description": "Lê UOL e Globo em silêncio: matérias só com o texto, sem scripts, anúncios, popups nem paywall.",
+  "version": "2.3.0",
+  "description": "Lê UOL, Globo e New York Times em silêncio: matérias só com o texto, sem scripts, anúncios, popups nem paywall.",
   "permissions": [
     "declarativeNetRequest",
     "declarativeNetRequestFeedback",
@@ -12,7 +12,8 @@
   ],
   "host_permissions": [
     "*://*.uol.com.br/*",
-    "*://*.globo.com/*"
+    "*://*.globo.com/*",
+    "*://*.nytimes.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -48,7 +49,8 @@
       ],
       "matches": [
         "*://*.uol.com.br/*",
-        "*://*.globo.com/*"
+        "*://*.globo.com/*",
+    "*://*.nytimes.com/*"
       ]
     }
   ],
@@ -56,7 +58,8 @@
     {
       "matches": [
         "*://*.uol.com.br/*",
-        "*://*.globo.com/*"
+        "*://*.globo.com/*",
+    "*://*.nytimes.com/*"
       ],
       "run_at": "document_start",
       "all_frames": false,
@@ -71,7 +74,8 @@
     {
       "matches": [
         "*://*.uol.com.br/*",
-        "*://*.globo.com/*"
+        "*://*.globo.com/*",
+    "*://*.nytimes.com/*"
       ],
       "run_at": "document_end",
       "all_frames": false,

@@ -109,7 +109,8 @@
     "condition": {
       "initiatorDomains": [
         "uol.com.br",
-        "globo.com"
+        "globo.com",
+        "nytimes.com"
       ],
       "resourceTypes": [
         "script",
@@ -161,7 +162,12 @@
         "ads-library.globo.com",
         "pendo.io",
         "dv.tech",
-        "aswpsdkus.com"
+        "aswpsdkus.com",
+        "datadoghq-browser-agent.com",
+        "dd.nytimes.com",
+        "a1.nyt.com",
+        "geoedge.be",
+        "media.net"
       ]
     }
   },
@@ -234,9 +240,32 @@
       "type": "block"
     },
     "condition": {
-      "regexFilter": "^https://([a-z0-9-]+\\.)*(globo\\.com|uol\\.com\\.br)/(sw|service-worker|OneSignalSDKWorker)[^/]*\\.js",
+      "regexFilter": "^https://([a-z0-9-]+\\.)*(globo\\.com|uol\\.com\\.br|nytimes\\.com)/(sw|service-worker|OneSignalSDKWorker)[^/]*\\.js",
       "resourceTypes": [
         "script",
+        "other",
+        "xmlhttprequest"
+      ]
+    }
+  },
+  {
+    "id": 12,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        {
+          "header": "Content-Security-Policy",
+          "operation": "append",
+          "value": "script-src 'none'"
+        }
+      ]
+    },
+    "condition": {
+      "regexFilter": "^https://www\\.nytimes\\.com/(\\d{4}/\\d{2}/\\d{2}/[^?#]+\\.html|live/\\d{4}/\\d{2}/\\d{2}/[^?#]+)([?#]|$)",
+      "resourceTypes": [
+        "main_frame",
+        "sub_frame",
         "other",
         "xmlhttprequest"
       ]

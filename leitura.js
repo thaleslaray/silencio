@@ -1,6 +1,6 @@
 // Modo leitura — Silêncio (document_end)
 // Troca a página da matéria por uma versão limpa, só com o texto.
-// A configuração de cada site (UOL, Globo) vem de sites.js.
+// A configuração de cada site (UOL, Globo, NYT) vem de sites.js.
 (function () {
   'use strict';
 
@@ -436,6 +436,19 @@
           lista.appendChild(li);
         }
         corpo.appendChild(lista);
+      } else if (bl.tipo === 'nota') {
+        var nota = criar('p', 'leitura-nota');
+        nota.appendChild(document.createTextNode(bl.texto + ' '));
+        var lnota = criar('a', '', 'Ver original');
+        lnota.href = urlOriginal;
+        nota.appendChild(lnota);
+        corpo.appendChild(nota);
+      } else if (bl.tipo === 'meta') {
+        var pmeta = criar('p', 'leitura-post-meta');
+        pmeta.innerHTML = bl.html; // já sanitizado
+        corpo.appendChild(pmeta);
+      } else if (bl.tipo === 'sep') {
+        corpo.appendChild(criar('hr', 'leitura-sep'));
       } else {
         var el = document.createElement(bl.tipo);
         el.innerHTML = bl.html; // já sanitizado

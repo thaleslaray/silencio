@@ -271,6 +271,38 @@ body > :not(.leitura-barra):not(.leitura-coluna):not(.leitura-aviso) {
 
 .leitura-corpo li { margin-bottom: 0.4em; }
 
+/* ---------- blocos extras (blogs ao vivo, avisos) ---------- */
+
+/* nota: aviso dentro do texto, ex. "o site só entrega o início sem assinatura" */
+.leitura-corpo .leitura-nota {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  padding: 12px 14px;
+  margin: 1.5em 0;
+}
+
+.leitura-corpo .leitura-nota a { color: var(--accent); }
+
+/* linha de metadados de um post (autor · hora) */
+.leitura-corpo .leitura-post-meta {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--muted);
+  margin: -0.4em 0 1em;
+}
+
+/* separador entre posts */
+.leitura-corpo hr.leitura-sep {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 2.2em 0;
+}
+
 /* ---------- rodapé ---------- */
 
 .leitura-fim {

@@ -40,3 +40,20 @@ hr.with-ads,
 .barreiraJornada {
   display: none !important;
 }
+
+/* NYT: anúncios, banner de cookies e paredes de cadastro (NUNCA esconder #vi-gateway-container: ele envolve todo o conteúdo) */
+[data-testid="StandardAd"],
+[id^="dfp-ad"],
+#fides-overlay,
+.fides-overlay,
+#gateway-content,
+[data-testid="inline-message"],
+[data-testid="ReadersModeGateway"] {
+  display: none !important;
+}
+
+/* NYT: a parede trava a rolagem com overflow hidden no body */
+body.gps-show,
+html.gps-show {
+  overflow: auto !important;
+}

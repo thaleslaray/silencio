@@ -135,7 +135,8 @@ try {
 // URLs de matéria (mesmos critérios de sites.js e das regras 5 e 9)
 var URLS_MATERIA = [
   /^https:\/\/([a-z0-9-]+\.)*uol\.com\.br\/.*\/20\d{2}\/\d{2}\/\d{2}\/[^/?#]+\.g?html?([?#]|$)/,
-  /^https:\/\/([a-z0-9-]+\.)*globo\.com\/.*\.ghtml([?#]|$)/
+  /^https:\/\/([a-z0-9-]+\.)*globo\.com\/.*\.ghtml([?#]|$)/,
+  /^https:\/\/www\.nytimes\.com\/(\d{4}\/\d{2}\/\d{2}\/[^?#]+\.html|live\/\d{4}\/\d{2}\/\d{2}\/[^?#]+)([?#]|$)/
 ];
 
 function ehMateria(url) {
@@ -157,7 +158,7 @@ function garantirLeitura(tabId, url) {
 }
 
 // Hosts dos portais cobertos
-var HOSTS_SITES = /(^|\.)(uol\.com\.br|globo\.com)$/;
+var HOSTS_SITES = /(^|\.)(uol\.com\.br|globo\.com|nytimes\.com)$/;
 
 // Páginas entregues por Service Worker não recebem o cabeçalho CSP da regra de rede.
 // Então, sempre que uma aba desses sites carrega, apaga o Service Worker (e o cache dele) daquela origem:
@@ -212,7 +213,7 @@ try {
     try {
       var origens = ['https://www.globo.com', 'https://g1.globo.com', 'https://ge.globo.com', 'https://oglobo.globo.com',
         'https://gshow.globo.com', 'https://revistaquem.globo.com', 'https://revistamonet.globo.com', 'https://valor.globo.com',
-        'https://extra.globo.com', 'https://www.uol.com.br', 'https://noticias.uol.com.br', 'https://www.bol.uol.com.br'];
+        'https://extra.globo.com', 'https://www.uol.com.br', 'https://noticias.uol.com.br', 'https://www.bol.uol.com.br', 'https://www.nytimes.com'];
       if (chrome.browsingData) chrome.browsingData.remove({ origins: origens }, { serviceWorkers: true, cacheStorage: true }).catch(function () {});
     } catch (e) {}
   });
