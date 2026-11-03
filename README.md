@@ -66,7 +66,7 @@ A contagem da aba volta a zero quando você navega para outra página. O contado
 1. Abra `chrome://extensions` no Chrome.
 2. Ative o **Modo do desenvolvedor** (canto superior direito).
 3. Clique em **Carregar sem compactação**.
-4. Escolha a pasta da extensão (`sem-porteira-uol`).
+4. Escolha a pasta onde você clonou ou baixou este repositório (`silencio`), a que contém o `manifest.json`.
 
 ### Depois de atualizar os arquivos
 
