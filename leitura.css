@@ -60,7 +60,7 @@ body {
 }
 
 /* Nada que scripts tardios injetarem no body aparece; só a leitura */
-body > :not(.leitura-barra):not(.leitura-coluna):not(.leitura-aviso) {
+body > :not(.leitura-barra):not(.leitura-coluna):not(.leitura-layout):not(.leitura-aviso) {
   display: none !important;
 }
 
@@ -148,6 +148,125 @@ body > :not(.leitura-barra):not(.leitura-coluna):not(.leitura-aviso) {
 .leitura-barra a:hover {
   color: var(--fg);
   background: var(--rule);
+}
+
+/* ---------- resumo (IA embutida do Chrome) ---------- */
+
+/* layout: [resumo 280px] [texto 680px], centrados; em tela estreita vira um cartão acima do texto */
+.leitura-layout {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 48px;
+  padding: 0 20px;
+}
+
+.leitura-layout .leitura-coluna {
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.leitura-resumo {
+  flex: 0 0 280px;
+  width: 280px;
+  position: sticky;
+  top: 72px;
+  margin-top: 44px;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fg);
+}
+
+.leitura-resumo h2 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.leitura-resumo h2 small {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.leitura-resumo ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+.leitura-resumo li {
+  margin-bottom: 0.6em;
+}
+
+.leitura-resumo li::marker { color: var(--accent); }
+
+/* estados: resumindo (pulsa), aviso (muted), botão de baixar o modelo */
+.leitura-resumo .leitura-resumo-estado {
+  color: var(--muted);
+  margin: 0;
+}
+
+.leitura-resumo .leitura-resumo-estado.esperando {
+  animation: leitura-pulso 1.4s ease-in-out infinite;
+}
+
+@keyframes leitura-pulso {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+.leitura-resumo button {
+  appearance: none;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 17px;
+  padding: 7px 12px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.leitura-resumo button:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+.leitura-resumo .leitura-resumo-rodape {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+@media (max-width: 1180px) {
+  .leitura-layout { display: block; padding: 0; }
+  .leitura-layout .leitura-coluna { margin: 0 auto; padding-left: 20px; padding-right: 20px; }
+  .leitura-resumo {
+    position: static;
+    width: auto;
+    max-width: 680px;
+    margin: 28px auto 0;
+    padding: 14px 16px;
+    background: color-mix(in srgb, var(--rule) 45%, transparent);
+    border-radius: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leitura-resumo .leitura-resumo-estado.esperando { animation: none; }
+}
+
+@media print {
+  .leitura-resumo { display: none; }
 }
 
 /* ---------- coluna ---------- */

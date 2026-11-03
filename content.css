@@ -57,3 +57,12 @@ body.gps-show,
 html.gps-show {
   overflow: auto !important;
 }
+
+/* Folha de S.Paulo: anúncios, paywall flutuante e chamadas de assinatura */
+.c-advertising,
+#paywall-flutuante,
+.c-subscribe-ads,
+.c-push-notification,
+.c-top-ads {
+  display: none !important;
+}

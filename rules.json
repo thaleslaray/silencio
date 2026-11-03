@@ -78,7 +78,7 @@
       ]
     },
     "condition": {
-      "regexFilter": "^https://([a-z0-9-]+\\.)*uol\\.com\\.br/.*/20[0-9]{2}/[0-9]{2}/[0-9]{2}/[^/?#]+\\.g?html?([?#]|$)",
+      "regexFilter": "^https://([a-z0-9-]+\\.)*(uol\\.com\\.br|globo\\.com|nytimes\\.com)/([^?#]*\\.[gs]?html?|live/[^?#]+)([?#]|$)",
       "resourceTypes": [
         "main_frame",
         "sub_frame",
@@ -195,29 +195,6 @@
     }
   },
   {
-    "id": 9,
-    "priority": 1,
-    "action": {
-      "type": "modifyHeaders",
-      "responseHeaders": [
-        {
-          "header": "Content-Security-Policy",
-          "operation": "append",
-          "value": "script-src 'none'"
-        }
-      ]
-    },
-    "condition": {
-      "regexFilter": "^https://([a-z0-9-]+\\.)*globo\\.com/.*\\.ghtml([?#]|$)",
-      "resourceTypes": [
-        "main_frame",
-        "sub_frame",
-        "other",
-        "xmlhttprequest"
-      ]
-    }
-  },
-  {
     "id": 10,
     "priority": 2,
     "action": {
@@ -249,25 +226,19 @@
     }
   },
   {
-    "id": 12,
-    "priority": 1,
+    "id": 14,
+    "priority": 2,
     "action": {
-      "type": "modifyHeaders",
-      "responseHeaders": [
-        {
-          "header": "Content-Security-Policy",
-          "operation": "append",
-          "value": "script-src 'none'"
-        }
-      ]
+      "type": "block"
     },
     "condition": {
-      "regexFilter": "^https://www\\.nytimes\\.com/(\\d{4}/\\d{2}/\\d{2}/[^?#]+\\.html|live/\\d{4}/\\d{2}/\\d{2}/[^?#]+)([?#]|$)",
+      "urlFilter": "||paywall.folha.uol.com.br/",
       "resourceTypes": [
-        "main_frame",
-        "sub_frame",
-        "other",
+        "script",
         "xmlhttprequest"
+      ],
+      "initiatorDomains": [
+        "uol.com.br"
       ]
     }
   }

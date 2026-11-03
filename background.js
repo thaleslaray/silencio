@@ -3,7 +3,7 @@
 
 var VERDE = '#1E8E3E';
 // Só as regras do Piano (1), do Offerwall (2) e do paywall do O Globo (10) contam como popup; 3 e 4 não.
-var REGRAS_POPUP = [1, 2, 10];
+var REGRAS_POPUP = [1, 2, 10, 14];
 
 var ICONE_VERDE = {
   16: 'icons/verde-16.png',
@@ -94,6 +94,13 @@ async function atualizarIcone(tabId) {
   }
 }
 
+// Libera chrome.storage.session para os content scripts (cache do resumo da IA)
+try {
+  if (chrome.storage && chrome.storage.session && chrome.storage.session.setAccessLevel) {
+    chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' }).catch(function () {});
+  }
+} catch (e) {}
+
 // Garante que o total exista
 async function iniciarTotal() {
   try {
@@ -134,9 +141,8 @@ try {
 
 // URLs de matéria (mesmos critérios de sites.js e das regras 5 e 9)
 var URLS_MATERIA = [
-  /^https:\/\/([a-z0-9-]+\.)*uol\.com\.br\/.*\/20\d{2}\/\d{2}\/\d{2}\/[^/?#]+\.g?html?([?#]|$)/,
-  /^https:\/\/([a-z0-9-]+\.)*globo\.com\/.*\.ghtml([?#]|$)/,
-  /^https:\/\/www\.nytimes\.com\/(\d{4}\/\d{2}\/\d{2}\/[^?#]+\.html|live\/\d{4}\/\d{2}\/\d{2}\/[^?#]+)([?#]|$)/
+  // uma regra só, por extensão de arquivo (igual à regra 5 do rules.json); a leitura decide pelo conteúdo
+  /^https:\/\/([a-z0-9-]+\.)*(uol\.com\.br|globo\.com|nytimes\.com)\/([^?#]*\.[gs]?html?|live\/[^?#]+)([?#]|$)/
 ];
 
 function ehMateria(url) {
@@ -213,7 +219,7 @@ try {
     try {
       var origens = ['https://www.globo.com', 'https://g1.globo.com', 'https://ge.globo.com', 'https://oglobo.globo.com',
         'https://gshow.globo.com', 'https://revistaquem.globo.com', 'https://revistamonet.globo.com', 'https://valor.globo.com',
-        'https://extra.globo.com', 'https://www.uol.com.br', 'https://noticias.uol.com.br', 'https://www.bol.uol.com.br', 'https://www.nytimes.com'];
+        'https://extra.globo.com', 'https://www.uol.com.br', 'https://noticias.uol.com.br', 'https://www1.folha.uol.com.br', 'https://www.bol.uol.com.br', 'https://www.nytimes.com'];
       if (chrome.browsingData) chrome.browsingData.remove({ origins: origens }, { serviceWorkers: true, cacheStorage: true }).catch(function () {});
     } catch (e) {}
   });

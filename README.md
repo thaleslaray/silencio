@@ -22,6 +22,15 @@ A extensão trabalha em três camadas:
 
 O texto da matéria já vem completo no HTML do servidor (no NYT, só o trecho liberado a quem não assina); a extensão só tira o que está em volta.
 
+## Resumo com a IA do Chrome
+
+No modo leitura, ao lado do texto (acima dele, em telas estreitas), aparece um quadro **Resumo** com 3 a 5 tópicos da matéria, gerados pela IA embutida do Chrome (Gemini Nano, API `LanguageModel`).
+
+- **Roda no seu computador.** O texto da matéria é processado localmente pelo modelo do Chrome; nada é enviado para fora. O resumo fica guardado só durante a sessão do navegador (`chrome.storage.session`), para não gerar de novo ao recarregar.
+- **Requisitos** (os do próprio Chrome para a IA embutida): Chrome 138 ou mais novo; macOS 13+, Windows 10+ ou Linux; pelo menos 22 GB livres no disco do perfil do Chrome; 16 GB de RAM, ou uma GPU com mais de 4 GB de memória de vídeo.
+- **Baixa o modelo uma vez.** Se o modelo ainda não estiver no computador, o quadro mostra o botão **Baixar e resumir**. O download (alguns minutos) só começa quando você clica; depois disso o resumo é gerado sozinho em cada matéria.
+- **Pode errar.** É um modelo pequeno: confira detalhes (nomes, números, datas) no texto. Só os primeiros 9.000 caracteres da matéria são considerados, e matérias muito curtas (menos de 400 caracteres) não são resumidas. Se a IA não estiver disponível, o quadro avisa o motivo.
+
 ## Contador no ícone
 
 O ícone da extensão na barra do Chrome mostra o que foi removido:

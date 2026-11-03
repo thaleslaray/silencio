@@ -1,6 +1,10 @@
 // Configuração por site (UOL, Globo, NYT). Carregado antes de content.js e leitura.js.
 // Os dois compartilham o escopo global do mundo isolado, então SITES fica visível neles.
 
+// Qualquer página com cara de arquivo de matéria (.htm, .ghtm, .html, .shtml, .ghtml) ou /live/ do NYT.
+// Não descreve URL por site: quem decide se é matéria mesmo é temMateria(), olhando o conteúdo.
+var MATERIA_GENERICA = /(\.[gs]?html?$)|(^\/live\/.+)/;
+
 var SITES = (function () {
   // Os blocos do corpo são montados com o util que o leitura.js passa pra extrair()
   function ehAds(el) {
@@ -13,7 +17,7 @@ var SITES = (function () {
     nome: 'UOL',
     home: 'https://www.uol.com.br/',  // link 'Início' da barra do modo leitura
     host: /(^|\.)uol\.com\.br$/,
-    materia: /\/20\d{2}\/\d{2}\/\d{2}\/[^/]+\.g?html?$/,
+    materia: MATERIA_GENERICA,
     temMateria: function (doc) {
       return !!doc.querySelector('article .jupiter-paragraph-fragment p');
     },
@@ -87,7 +91,7 @@ var SITES = (function () {
     nome: 'Globo',
     home: 'https://www.globo.com/',  // link 'Início' da barra do modo leitura
     host: /(^|\.)globo\.com$/,
-    materia: /\.ghtml$/,  // na Globo, toda página .ghtml é matéria (notícia, post, coluna)
+    materia: MATERIA_GENERICA,
     temMateria: function (doc) {
       return !!doc.querySelector('article .content-text__container');
     },
@@ -175,7 +179,7 @@ var SITES = (function () {
     home: 'https://www.nytimes.com/',  // link 'Início' da barra do modo leitura
     host: /(^|\.)nytimes\.com$/,
     // matéria: /AAAA/MM/DD/<secao>/<slug>.html; blog ao vivo: /live/AAAA/MM/DD/<secao>/<slug>
-    materia: /^\/(\d{4}\/\d{2}\/\d{2}\/.+\.html|live\/\d{4}\/\d{2}\/\d{2}\/.+)$/,
+    materia: MATERIA_GENERICA,
     temMateria: function (doc) {
       return !!doc.querySelector('section[name="articleBody"] p, [data-testid="live-blog-post"], [data-testid="reporter-update"]');
     },
@@ -323,7 +327,88 @@ var SITES = (function () {
     }
   };
 
-  return [uol, globo, nyt];
+  // ---------- Folha de S.Paulo (www1.folha.uol.com.br) ----------
+  // Fica ANTES do UOL na lista: o host da Folha também casa a regex do UOL.
+  var folha = {
+    nome: 'Folha',
+    home: 'https://www1.folha.uol.com.br/',
+    host: /(^|\.)folha\.uol\.com\.br$/,
+    materia: MATERIA_GENERICA,
+    temMateria: function (doc) {
+      return !!doc.querySelector('.c-news__body p');
+    },
+    meta: {
+      chapeu: '.c-content-head .c-kicker',
+      titulo: 'h1.c-content-head__title',
+      subtitulo: '',            // os subtítulos são uma lista; viram o primeiro bloco em extrair()
+      autor: '.c-signature__author',
+      origem: '',
+      data: 'time.c-headline__dateline, time[itemprop="datePublished"]'
+    },
+    contarRemovidos: function (doc) {
+      var n = doc.querySelectorAll('.c-advertising').length;
+      if (doc.querySelector('script[src*="paywall.folha.uol.com.br"]')) n += 1;
+      return n;
+    },
+    extrair: function (doc, util) {
+      var blocos = [];
+
+      // subtítulos (linha fina em lista) como primeiro bloco
+      var sub = doc.querySelector('.c-content-head__subtitle--list');
+      if (sub) {
+        var l = util.lista(sub);
+        if (l) blocos.push(l);
+      }
+
+      // imagens da Folha carregam preguiçosamente: a URL está em data-srcset / data-src
+      function figuraDe(fig) {
+        if (!fig) return null;
+        var img = fig.querySelector('img');
+        if (!img) return null;
+        var src = util.melhorImagemSrcset(img.getAttribute('data-srcset') || img.getAttribute('srcset') || '');
+        if (!src) src = img.getAttribute('data-src') || img.getAttribute('src') || '';
+        src = util.urlSegura(src);
+        if (!src) return null;
+        var cap = fig.querySelector('figcaption');
+        return {
+          tipo: 'figura',
+          src: src,
+          alt: img.getAttribute('alt') || '',
+          legenda: cap ? (cap.textContent || '').replace(/\s+/g, ' ').trim() : '',
+          credito: ''
+        };
+      }
+
+      var corpo = doc.querySelector('.c-news__body');
+      if (!corpo) return blocos;
+      var filhos = corpo.children;
+      for (var i = 0; i < filhos.length; i++) {
+        var el = filhos[i];
+        var tag = el.tagName.toLowerCase();
+        var cls = el.className || '';
+        if (/c-advertising|player_dynad|widget-twitter|widget-spotify|widget-infographic|js-gallery-widget|rs_skip/.test(cls)) continue;
+        if (tag === 'p' || tag === 'h2' || tag === 'h3' || tag === 'blockquote') {
+          if (util.temTexto(el)) blocos.push({ tipo: tag, html: util.sanitizar(el) });
+        } else if (tag === 'ul' || tag === 'ol') {
+          var lst = util.lista(el);
+          if (lst) blocos.push(lst);
+        } else if (tag === 'figure') {
+          var f1 = figuraDe(el);
+          if (f1) blocos.push(f1);
+        } else if (tag === 'div') {
+          // contêineres de imagem (div.widget-image > figure) e wrappers sem classe
+          var fig = el.querySelector('figure');
+          if (fig && !/gallery/.test(cls) && !el.querySelector('.js-gallery-widget')) {
+            var f2 = figuraDe(fig);
+            if (f2) blocos.push(f2);
+          }
+        }
+      }
+      return blocos;
+    }
+  };
+
+  return [folha, uol, globo, nyt];
 })();
 
 // Devolve o site cujo host casa com o endereço atual, ou null

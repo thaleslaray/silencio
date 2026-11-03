@@ -7,6 +7,10 @@
   var TAM_MIN = 15;
   var TAM_MAX = 30;
   var TAM_PADRAO = 20;
+  // limites do resumo (declarados aqui em cima: iniciar() roda antes do fim do arquivo)
+  var RESUMO_MAX_CHARS = 6000;
+  var RESUMO_MIN_CHARS = 400;
+  var RESUMO_TIMEOUT_MS = 60000;
 
   // Remove o <style> que escondia a página original
   function revelar() {
@@ -47,18 +51,10 @@
     // b) endereço da página original (sem leitura)
     urlOriginal = location.href.replace(/#.*$/, '') + (location.search ? '&' : '?') + 'original=1';
 
-    // c) página com data na URL mas sem matéria (galeria, vídeo...)
+    // c) tem cara de matéria pela URL, mas o conteúdo não é matéria (página de seção com nome de arquivo):
+    //    volta sozinho pra versão original, com scripts, sem mostrar nada quebrado
     if (!site.temMateria(document)) {
-      revelar();
-      adicionarCss();
-      var aviso = document.createElement('div');
-      aviso.className = 'leitura-aviso';
-      aviso.appendChild(document.createTextNode('Esta página precisa de scripts pra funcionar. '));
-      var link = document.createElement('a');
-      link.href = urlOriginal;
-      link.textContent = 'Abrir a página original';
-      aviso.appendChild(link);
-      if (document.body) document.body.insertBefore(aviso, document.body.firstChild);
+      location.replace(urlOriginal);
       return;
     }
 
@@ -111,7 +107,7 @@
   // Remove do body tudo que não for da leitura, e <script> novos do head, por 2 minutos
   function vigiarIntrusos() {
     function ehNosso(el) {
-      return el.nodeType === 1 && /(^|\s)leitura-(barra|coluna|aviso)(\s|$)/.test(el.className || '');
+      return el.nodeType === 1 && /(^|\s)leitura-(barra|layout|coluna|aviso)(\s|$)/.test(el.className || '');
     }
     function limparIntrusos() {
       try {
@@ -469,7 +465,268 @@
     // Vigia: scripts que já estavam rodando podem injetar barras, banners e <script> depois da troca; some com tudo
     vigiarIntrusos();
 
+    // layout: resumo da IA ao lado da coluna
+    var layout = criar('div', 'leitura-layout');
+    var resumo = criar('aside', 'leitura-resumo');
+    var h2 = criar('h2', '', 'Resumo ');
+    h2.appendChild(criar('small', '', 'IA do Chrome, no seu computador'));
+    resumo.appendChild(h2);
+    resumo.appendChild(criar('p', 'leitura-resumo-estado esperando', 'Resumindo…'));
+    layout.appendChild(resumo);
+    layout.appendChild(coluna);
     document.body.appendChild(barra);
-    document.body.appendChild(coluna);
+    document.body.appendChild(layout);
+
+    // nunca pode quebrar a montagem
+    try {
+      var pr = resumir(d, resumo);
+      if (pr && typeof pr.catch === 'function') {
+        pr.catch(function () {
+          try { estadoResumo(resumo, 'Não consegui resumir esta matéria.'); } catch (e) {}
+        });
+      }
+    } catch (e) {
+      try { estadoResumo(resumo, 'Não consegui resumir esta matéria.'); } catch (e2) {}
+    }
+  }
+
+  // ---------- resumo com a IA do Chrome (Gemini Nano, API LanguageModel) ----------
+
+  // Troca tudo que está abaixo do <h2> do aside; devolve o <p> de estado
+  function estadoResumo(resumo, texto, esperando) {
+    while (resumo.children.length > 1) resumo.removeChild(resumo.lastChild);
+    var p = criar('p', 'leitura-resumo-estado' + (esperando ? ' esperando' : ''), texto);
+    resumo.appendChild(p);
+    return p;
+  }
+
+  function htmlParaTexto(html) {
+    var tmp = document.createElement('div');
+    tmp.innerHTML = html || '';
+    return (tmp.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
+  // Título, subtítulo e blocos de texto (sem meta, nota e figura), separados por linha em branco
+  function textoParaResumo(d) {
+    var partes = [];
+    if (d.titulo) partes.push(d.titulo);
+    if (d.subtitulo) partes.push(d.subtitulo);
+    var blocos = d.blocos || [];
+    for (var i = 0; i < blocos.length; i++) {
+      var b = blocos[i];
+      var t = '';
+      if (b.tipo === 'p' || b.tipo === 'h2' || b.tipo === 'h3' || b.tipo === 'blockquote') {
+        t = htmlParaTexto(b.html);
+        if (t) partes.push(t);
+      } else if ((b.tipo === 'ul' || b.tipo === 'ol') && b.itens) {
+        for (var j = 0; j < b.itens.length; j++) {
+          t = htmlParaTexto(b.itens[j]);
+          if (t) partes.push(t);
+        }
+      }
+    }
+    return partes.join('\n\n');
+  }
+
+  function chaveResumo() {
+    var u;
+    try {
+      u = new URL(location.href);
+      u.hash = '';
+      u.searchParams.delete('original');
+      return 'resumo:' + u.href;
+    } catch (e) {
+      return 'resumo:' + location.href.replace(/#.*$/, '');
+    }
+  }
+
+  async function lerCache(chave) {
+    try {
+      if (!chrome.storage || !chrome.storage.session) return null;
+      var r = await chrome.storage.session.get(chave);
+      var v = r && r[chave];
+      if (v && Array.isArray(v.itens) && v.itens.length) return v;
+    } catch (e) {}
+    return null;
+  }
+
+  async function gravarCache(chave, valor) {
+    try {
+      if (!chrome.storage || !chrome.storage.session) return;
+      var o = {};
+      o[chave] = valor;
+      await chrome.storage.session.set(o);
+    } catch (e) {}
+  }
+
+  // parcial = ainda está chegando (streaming): mostra o que já saiu e um "Resumindo…" no lugar do rodapé
+  function mostrarResumo(resumo, itens, cortou, parcial) {
+    while (resumo.children.length > 1) resumo.removeChild(resumo.lastChild);
+    var ul = document.createElement('ul');
+    for (var i = 0; i < itens.length; i++) ul.appendChild(criar('li', '', itens[i]));
+    resumo.appendChild(ul);
+    if (parcial) {
+      resumo.appendChild(criar('p', 'leitura-resumo-estado esperando', 'Resumindo…'));
+      return;
+    }
+    resumo.appendChild(criar('p', 'leitura-resumo-rodape',
+      'Resumo feito pela IA do Chrome, no seu computador. Pode errar detalhes.' +
+      (cortou ? ' Só o começo da matéria foi considerado.' : '')));
+  }
+
+  function parseItens(resposta, n) {
+    var linhas = String(resposta || '').split(/\r?\n/);
+    var itens = [];
+    for (var i = 0; i < linhas.length; i++) {
+      var t = linhas[i].replace(/^\s*(?:[-*\u2022]|\d+[.)])\s+/, '').trim();
+      if (t) itens.push(t);
+    }
+    return itens.slice(0, n);
+  }
+
+  // Lê a resposta em streaming; chama aoParcial com o texto acumulado a cada pedaço
+  async function lerStreaming(sessao, pergunta, aoParcial) {
+    if (typeof sessao.promptStreaming !== 'function') return sessao.prompt(pergunta);
+    var acumulado = '';
+    var fluxo = sessao.promptStreaming(pergunta);
+    var leitor = fluxo.getReader();
+    while (true) {
+      var r = await leitor.read();
+      if (r.done) break;
+      var pedaco = typeof r.value === 'string' ? r.value : '';
+      // versões antigas mandam o texto inteiro a cada pedaço; novas mandam só o delta
+      acumulado = pedaco.length >= acumulado.length && pedaco.indexOf(acumulado) === 0 ? pedaco : acumulado + pedaco;
+      try { aoParcial(acumulado); } catch (e) {}
+    }
+    return acumulado;
+  }
+
+  // Heurística: tem palavras comuns do português e não está dominado por palavras comuns do inglês
+  function pareceCortugues(t) {
+    var pt = (t.match(/\b(que|para|com|uma|não|dos|das|pelo|pela|mais|também|governo|eleição|eleições|segundo|sobre|entre)\b/gi) || []).length;
+    var en = (t.match(/\b(the|and|with|that|for|from|voters|election|will|have|has|are|were)\b/gi) || []).length;
+    return pt >= 2 && pt >= en;
+  }
+
+  async function resumir(d, resumo) {
+    var texto = textoParaResumo(d);
+    var cortou = false;
+    if (texto.length > RESUMO_MAX_CHARS) {
+      texto = texto.slice(0, RESUMO_MAX_CHARS);
+      cortou = true;
+    }
+    if (texto.length < RESUMO_MIN_CHARS) {
+      estadoResumo(resumo, 'Texto curto demais pra resumir.');
+      return;
+    }
+
+    var chave = chaveResumo();
+    var guardado = await lerCache(chave);
+    if (guardado) {
+      mostrarResumo(resumo, guardado.itens, !!guardado.cortou);
+      return;
+    }
+
+    if (typeof LanguageModel === 'undefined') {
+      estadoResumo(resumo, 'A IA embutida do Chrome não está disponível neste navegador.');
+      return;
+    }
+
+    var n = texto.length < 1500 ? 3 : 5;
+
+    async function gerar(baixando) {
+      var sessao = null;
+      var timer = null;
+      try {
+        estadoResumo(resumo, baixando ? 'Baixando o modelo…' : 'Resumindo…', !baixando);
+        var opcoes = {
+          initialPrompts: [{
+            role: 'system',
+            content: 'Você resume notícias em português do Brasil. Responda SOMENTE com ' + n +
+              ' tópicos curtos, uma frase cada, um por linha, começando com "- ". ' +
+              'Use apenas informações do texto; não invente nem opine.'
+          }]
+        };
+        if (baixando) {
+          opcoes.monitor = function (m) {
+            try {
+              m.addEventListener('downloadprogress', function (e) {
+                try {
+                  if (e && typeof e.loaded === 'number' && isFinite(e.loaded)) {
+                    var pct = Math.round((e.loaded <= 1 ? e.loaded * 100 : e.loaded));
+                    estadoResumo(resumo, 'Baixando o modelo… ' + Math.min(100, pct) + '%');
+                  }
+                } catch (e2) {}
+              });
+            } catch (e3) {}
+          };
+        }
+        sessao = await LanguageModel.create(opcoes);
+        estadoResumo(resumo, 'Resumindo…', true);
+
+        var limite = new Promise(function (_, rejeitar) {
+          timer = setTimeout(function () { rejeitar(new Error('timeout')); }, RESUMO_TIMEOUT_MS);
+        });
+
+        // Pede em português no começo E no fim (modelo pequeno obedece melhor à última instrução)
+        var pergunta = 'Resuma esta notícia em português do Brasil:\n\n' + texto +
+          '\n\nEscreva os ' + n + ' tópicos em português do Brasil, mesmo que o texto esteja em outro idioma.';
+
+        // Streaming: mostra os tópicos conforme saem, em vez de esperar tudo
+        var resposta = await Promise.race([lerStreaming(sessao, pergunta, function (parcial) {
+          var prontos = parseItens(parcial, n);
+          if (prontos.length) mostrarResumo(resumo, prontos, cortou, true);
+        }), limite]);
+
+        var itens = parseItens(resposta, n);
+        if (!itens.length) {
+          estadoResumo(resumo, 'Não consegui resumir esta matéria.');
+          return;
+        }
+
+        // Saiu em outro idioma? Manda reescrever em português na mesma sessão
+        if (!pareceCortugues(itens.join(' '))) {
+          estadoResumo(resumo, 'Traduzindo…', true);
+          var denovo = await Promise.race([lerStreaming(sessao,
+            'Reescreva os tópicos acima em português do Brasil, no mesmo formato ("- " no início de cada linha), sem comentários.',
+            function (parcial) {
+              var prontos2 = parseItens(parcial, n);
+              if (prontos2.length) mostrarResumo(resumo, prontos2, cortou, true);
+            }), limite]);
+          var itens2 = parseItens(denovo, n);
+          if (itens2.length) itens = itens2;
+        }
+
+        mostrarResumo(resumo, itens, cortou);
+        gravarCache(chave, { itens: itens, cortou: cortou });
+      } catch (e) {
+        if (e && e.message === 'timeout') {
+          estadoResumo(resumo, 'O resumo demorou demais. Tente recarregar a página.');
+        } else {
+          estadoResumo(resumo, 'Não consegui resumir esta matéria.');
+        }
+      } finally {
+        if (timer) clearTimeout(timer);
+        try { if (sessao) sessao.destroy(); } catch (e4) {}
+      }
+    }
+
+    var disp = await LanguageModel.availability();
+    if (disp === 'unavailable') {
+      estadoResumo(resumo, 'A IA embutida do Chrome não está disponível neste computador.');
+      return;
+    }
+    if (disp === 'downloadable' || disp === 'downloading') {
+      estadoResumo(resumo, 'O modelo de IA do Chrome ainda não foi baixado (uma vez só, alguns minutos).');
+      var botao = criar('button', '', 'Baixar e resumir');
+      botao.type = 'button';
+      botao.addEventListener('click', function () {
+        botao.disabled = true;
+        gerar(true);
+      });
+      resumo.appendChild(botao);
+      return;
+    }
+    await gerar(false);
   }
 })();
