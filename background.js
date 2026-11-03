@@ -193,6 +193,7 @@ try {
       }
       if (info && info.status === 'loading' && info.url) {
         limparServiceWorker(info.url);
+        if (ehMateria(info.url)) aquecerIA();
         enfileirar(async function () {
           try {
             await chrome.storage.session.remove(chaveAba(tabId));
@@ -216,6 +217,7 @@ try {
 try {
   chrome.runtime.onInstalled.addListener(function () {
     iniciarTotal().catch(function () {});
+    aquecerIA();
     try {
       var origens = ['https://www.globo.com', 'https://g1.globo.com', 'https://ge.globo.com', 'https://oglobo.globo.com',
         'https://gshow.globo.com', 'https://revistaquem.globo.com', 'https://revistamonet.globo.com', 'https://valor.globo.com',
@@ -225,5 +227,159 @@ try {
   });
   chrome.runtime.onStartup.addListener(function () {
     iniciarTotal().catch(function () {});
+    aquecerIA();
+  });
+} catch (e) {}
+
+// ---------- Resumo pela IA do Chrome ----------
+// Roda na própria página (world MAIN), injetado por aqui: no contexto isolado do content script
+// a primeira sessão de IA demora de 16 a 30 s; na página, milissegundos. A injeção da extensão
+// ignora o CSP script-src 'none' da página. Esta função é serializada: não pode usar nada de fora.
+function resumirNaPagina(texto, n) {
+  return (async function () {
+    function pareceCortugues(t) {
+      var pt = (t.match(/\b(que|para|com|uma|não|dos|das|pelo|pela|mais|também|governo|eleição|eleições|segundo|sobre|entre)\b/gi) || []).length;
+      var en = (t.match(/\b(the|and|with|that|for|from|voters|election|will|have|has|are|were)\b/gi) || []).length;
+      return pt >= 2 && pt >= en;
+    }
+    function postar(estado, txt) {
+      try { window.postMessage({ silencio: 'resumo-parcial', estado: estado || '', texto: txt || '' }, '*'); } catch (e) {}
+    }
+    if (typeof LanguageModel === 'undefined') return { estado: 'unavailable' };
+    var disp;
+    postar('Verificando a IA…', '');
+    try { disp = await LanguageModel.availability(); } catch (e) { return { estado: 'unavailable' }; }
+    if (disp !== 'available') return { estado: disp };
+
+    var sessao = null;
+    var timer = null;
+    try {
+      var limite = new Promise(function (_, rejeitar) {
+        timer = setTimeout(function () { rejeitar(new Error('timeout')); }, 60000);
+      });
+      postar('Abrindo a sessão de IA…', '');
+      sessao = await LanguageModel.create({
+        initialPrompts: [{
+          role: 'system',
+          content: 'Você resume notícias em português do Brasil. Responda SOMENTE com tópicos curtos, uma frase cada, ' +
+            'um por linha, começando com "- ". Use apenas informações do texto; não invente nem opine.'
+        }]
+      });
+      async function ler(pergunta) {
+        if (typeof sessao.promptStreaming !== 'function') {
+          var r0 = await sessao.prompt(pergunta);
+          postar('', r0);
+          return r0;
+        }
+        var acc = '';
+        var leitor = sessao.promptStreaming(pergunta).getReader();
+        while (true) {
+          var r = await leitor.read();
+          if (r.done) break;
+          var v = typeof r.value === 'string' ? r.value : '';
+          acc = (v.length >= acc.length && v.indexOf(acc) === 0) ? v : acc + v;
+          postar('', acc);
+        }
+        return acc;
+      }
+      var pergunta = 'Resuma esta notícia em português do Brasil:\n\n' + texto +
+        '\n\nEscreva os ' + n + ' tópicos em português do Brasil, mesmo que o texto esteja em outro idioma.';
+      postar('Resumindo…', '');
+      var resposta = await Promise.race([ler(pergunta), limite]);
+      if (!pareceCortugues(resposta)) {
+        postar('Traduzindo…', '');
+        var denovo = await Promise.race([ler('Reescreva os tópicos acima em português do Brasil, no mesmo formato ("- " no início de cada linha), sem comentários.'), limite]);
+        if (denovo && denovo.trim()) resposta = denovo;
+      }
+      return { estado: 'ok', texto: resposta };
+    } catch (e) {
+      return { estado: (e && e.message === 'timeout') ? 'timeout' : 'erro', erro: String(e) };
+    } finally {
+      if (timer) clearTimeout(timer);
+      try { if (sessao) sessao.destroy(); } catch (e2) {}
+    }
+  })();
+}
+
+// Documento offscreen com a sessão de IA permanente (ia.html)
+var criandoOffscreen = null;
+async function garantirOffscreen() {
+  if (!chrome.offscreen) return false;
+  try {
+    if (chrome.offscreen.hasDocument && await chrome.offscreen.hasDocument()) return true;
+  } catch (e) {}
+  if (!criandoOffscreen) {
+    criandoOffscreen = chrome.offscreen.createDocument({
+      url: 'ia.html',
+      reasons: ['WORKERS'],
+      justification: 'Resumo de matérias com a IA embutida do Chrome, numa sessão permanente'
+    }).then(function () { return true; }, function (e) { return /exist|already/i.test(String(e)); })
+      .finally(function () { criandoOffscreen = null; });
+  }
+  return criandoOffscreen;
+}
+
+// Aquece a IA (cria o offscreen e a sessão base) fora do caminho crítico
+function aquecerIA() {
+  garantirOffscreen().then(function (ok) {
+    if (!ok) return;
+    try { var p = chrome.runtime.sendMessage({ tipo: 'ia-aquecer' }); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+  }).catch(function () {});
+}
+
+// Caminho de reserva: roda na própria página (main world)
+function resumirNoMainWorld(tabId, texto, n) {
+  return chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    world: 'MAIN',
+    func: resumirNaPagina,
+    args: [String(texto || ''), Number(n) || 5]
+  }).then(function (res) {
+    return res && res[0] && res[0].result ? res[0].result : { estado: 'erro' };
+  });
+}
+
+try {
+  chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
+    if (!msg) return;
+    // tópicos parciais vindos do offscreen: repassa para a aba
+    if (msg.tipo === 'resumo-parcial' && msg.tabId > 0 && !(sender && sender.tab)) {
+      try { var p = chrome.tabs.sendMessage(msg.tabId, msg); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+      return;
+    }
+    if (msg.tipo !== 'resumir' || !sender || !sender.tab || !(sender.tab.id > 0)) return;
+    var tabId = sender.tab.id;
+    (async function () {
+      try {
+        if (await garantirOffscreen()) {
+          var r = await chrome.runtime.sendMessage({ tipo: 'ia-resumir', texto: String(msg.texto || ''), n: Number(msg.n) || 5, tabId: tabId });
+          if (r && r.estado && r.estado !== 'unavailable-offscreen' && r.estado !== 'erro') return r;
+        }
+      } catch (e) {}
+      return resumirNoMainWorld(tabId, msg.texto, msg.n);
+    })().then(sendResponse, function (e) { sendResponse({ estado: 'erro', erro: String(e) }); });
+    return true; // resposta assíncrona
+  });
+} catch (e) {}
+
+// (antigo caminho direto, mantido só como referência do fallback)
+try {
+  chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
+    if (!msg || msg.tipo !== '__nunca__' || !sender || !sender.tab || !(sender.tab.id > 0)) return;
+    try {
+      chrome.scripting.executeScript({
+        target: { tabId: sender.tab.id },
+        world: 'MAIN',
+        func: resumirNaPagina,
+        args: [String(msg.texto || ''), Number(msg.n) || 5]
+      }).then(function (res) {
+        sendResponse(res && res[0] && res[0].result ? res[0].result : { estado: 'erro' });
+      }).catch(function (e) {
+        sendResponse({ estado: 'erro', erro: String(e) });
+      });
+    } catch (e) {
+      sendResponse({ estado: 'erro', erro: String(e) });
+    }
+    return true; // resposta assíncrona
   });
 } catch (e) {}

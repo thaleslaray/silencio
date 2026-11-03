@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Silêncio",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "description": "Lê UOL, Folha, Globo e New York Times em silêncio: matérias só com o texto, sem scripts, anúncios, popups nem paywall, com resumo pela IA do Chrome.",
   "permissions": [
     "declarativeNetRequest",
     "declarativeNetRequestFeedback",
     "storage",
     "scripting",
-    "browsingData"
+    "browsingData",
+    "offscreen"
   ],
   "host_permissions": [
     "*://*.uol.com.br/*",

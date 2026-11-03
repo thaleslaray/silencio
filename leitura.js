@@ -634,89 +634,101 @@
 
     var n = texto.length < 1500 ? 3 : 5;
 
+    // A IA roda na PRÓPRIA página (main world), injetada pelo service worker: no contexto isolado do
+    // content script a primeira sessão demora de 16 a 30 s; na página, milissegundos.
     async function gerar(baixando) {
-      var sessao = null;
-      var timer = null;
-      try {
-        estadoResumo(resumo, baixando ? 'Baixando o modelo…' : 'Resumindo…', !baixando);
-        var opcoes = {
-          initialPrompts: [{
-            role: 'system',
-            content: 'Você resume notícias em português do Brasil. Responda SOMENTE com ' + n +
-              ' tópicos curtos, uma frase cada, um por linha, começando com "- ". ' +
-              'Use apenas informações do texto; não invente nem opine.'
-          }]
-        };
-        if (baixando) {
-          opcoes.monitor = function (m) {
-            try {
-              m.addEventListener('downloadprogress', function (e) {
-                try {
-                  if (e && typeof e.loaded === 'number' && isFinite(e.loaded)) {
-                    var pct = Math.round((e.loaded <= 1 ? e.loaded * 100 : e.loaded));
-                    estadoResumo(resumo, 'Baixando o modelo… ' + Math.min(100, pct) + '%');
-                  }
-                } catch (e2) {}
-              });
-            } catch (e3) {}
-          };
-        }
-        sessao = await LanguageModel.create(opcoes);
-        estadoResumo(resumo, 'Resumindo…', true);
+      var recebeuAlgo = false;
+      var avisoLento = setTimeout(function () {
+        if (!recebeuAlgo) estadoResumo(resumo, 'Carregando a IA do Chrome… na primeira vez pode levar alguns segundos', true);
+      }, 4000);
 
-        var limite = new Promise(function (_, rejeitar) {
-          timer = setTimeout(function () { rejeitar(new Error('timeout')); }, RESUMO_TIMEOUT_MS);
-        });
-
-        // Pede em português no começo E no fim (modelo pequeno obedece melhor à última instrução)
-        var pergunta = 'Resuma esta notícia em português do Brasil:\n\n' + texto +
-          '\n\nEscreva os ' + n + ' tópicos em português do Brasil, mesmo que o texto esteja em outro idioma.';
-
-        // Streaming: mostra os tópicos conforme saem, em vez de esperar tudo
-        var resposta = await Promise.race([lerStreaming(sessao, pergunta, function (parcial) {
-          var prontos = parseItens(parcial, n);
+      // tópicos parciais chegam por postMessage da página
+      function aoMensagem(ev) {
+        try {
+          if (ev.source !== window || !ev.data || ev.data.silencio !== 'resumo-parcial') return;
+          recebeuAlgo = true;
+          var prontos = parseItens(ev.data.texto, n);
           if (prontos.length) mostrarResumo(resumo, prontos, cortou, true);
-        }), limite]);
+          else if (ev.data.estado) estadoResumo(resumo, ev.data.estado, true);
+        } catch (e) {}
+      }
+      window.addEventListener('message', aoMensagem);
+      // parciais vindos do offscreen chegam pelo runtime (repassados pelo service worker)
+      function aoRuntime(m) {
+        try {
+          if (!m || m.tipo !== 'resumo-parcial') return;
+          recebeuAlgo = true;
+          var prontos = parseItens(m.texto, n);
+          if (prontos.length) mostrarResumo(resumo, prontos, cortou, true);
+          else if (m.estado) estadoResumo(resumo, m.estado, true);
+        } catch (e) {}
+      }
+      try { chrome.runtime.onMessage.addListener(aoRuntime); } catch (e8) {}
 
-        var itens = parseItens(resposta, n);
+      try {
+        if (baixando) {
+          // o download exige clique do usuário, então fica aqui (uma vez só)
+          estadoResumo(resumo, 'Baixando o modelo…', true);
+          var sDown = await LanguageModel.create({
+            monitor: function (m) {
+              try {
+                m.addEventListener('downloadprogress', function (e) {
+                  try {
+                    if (e && typeof e.loaded === 'number' && isFinite(e.loaded)) {
+                      var pct = Math.round((e.loaded <= 1 ? e.loaded * 100 : e.loaded));
+                      estadoResumo(resumo, 'Baixando o modelo… ' + Math.min(100, pct) + '%');
+                    }
+                  } catch (e2) {}
+                });
+              } catch (e3) {}
+            }
+          });
+          try { sDown.destroy(); } catch (e7) {}
+        }
+
+        // Pedido cedo demais (página ainda carregando) trava o serviço de IA do Chrome por ~25 s;
+        // depois do load, leva milissegundos. Então espera o load + 1 s.
+        await new Promise(function (ok) {
+          var depois = function () { setTimeout(ok, 100); };
+          if (document.readyState === 'complete') depois();
+          else window.addEventListener('load', depois, { once: true });
+        });
+        estadoResumo(resumo, 'Resumindo…', true);
+        var r = await chrome.runtime.sendMessage({ tipo: 'resumir', texto: texto, n: n });
+        if (!r || !r.estado) throw new Error('sem resposta');
+        if (r.estado === 'unavailable') {
+          estadoResumo(resumo, 'A IA embutida do Chrome não está disponível neste computador.');
+          return;
+        }
+        if (r.estado === 'downloadable' || r.estado === 'downloading') {
+          mostrarBotaoDownload();
+          return;
+        }
+        if (r.estado === 'timeout') {
+          estadoResumo(resumo, 'O resumo demorou demais. Tente recarregar a página.');
+          return;
+        }
+        var itens = r.estado === 'ok' ? parseItens(r.texto, n) : [];
         if (!itens.length) {
           estadoResumo(resumo, 'Não consegui resumir esta matéria.');
           return;
         }
-
-        // Saiu em outro idioma? Manda reescrever em português na mesma sessão
-        if (!pareceCortugues(itens.join(' '))) {
-          estadoResumo(resumo, 'Traduzindo…', true);
-          var denovo = await Promise.race([lerStreaming(sessao,
-            'Reescreva os tópicos acima em português do Brasil, no mesmo formato ("- " no início de cada linha), sem comentários.',
-            function (parcial) {
-              var prontos2 = parseItens(parcial, n);
-              if (prontos2.length) mostrarResumo(resumo, prontos2, cortou, true);
-            }), limite]);
-          var itens2 = parseItens(denovo, n);
-          if (itens2.length) itens = itens2;
-        }
-
         mostrarResumo(resumo, itens, cortou);
+        if (r.t && r.t.total_ms) {
+          var rod = resumo.querySelector('.leitura-resumo-rodape');
+          if (rod) rod.textContent += ' (IA: sessão ' + ((r.t.sessao_ms || 0) / 1000).toFixed(1) + ' s · total ' + (r.t.total_ms / 1000).toFixed(1) + ' s)';
+        }
         gravarCache(chave, { itens: itens, cortou: cortou });
       } catch (e) {
-        if (e && e.message === 'timeout') {
-          estadoResumo(resumo, 'O resumo demorou demais. Tente recarregar a página.');
-        } else {
-          estadoResumo(resumo, 'Não consegui resumir esta matéria.');
-        }
+        estadoResumo(resumo, 'Não consegui resumir esta matéria.');
       } finally {
-        if (timer) clearTimeout(timer);
-        try { if (sessao) sessao.destroy(); } catch (e4) {}
+        clearTimeout(avisoLento);
+        window.removeEventListener('message', aoMensagem);
+        try { chrome.runtime.onMessage.removeListener(aoRuntime); } catch (e9) {}
       }
     }
 
-    var disp = await LanguageModel.availability();
-    if (disp === 'unavailable') {
-      estadoResumo(resumo, 'A IA embutida do Chrome não está disponível neste computador.');
-      return;
-    }
-    if (disp === 'downloadable' || disp === 'downloading') {
+    function mostrarBotaoDownload() {
       estadoResumo(resumo, 'O modelo de IA do Chrome ainda não foi baixado (uma vez só, alguns minutos).');
       var botao = criar('button', '', 'Baixar e resumir');
       botao.type = 'button';
@@ -725,8 +737,8 @@
         gerar(true);
       });
       resumo.appendChild(botao);
-      return;
     }
+
     await gerar(false);
   }
 })();
