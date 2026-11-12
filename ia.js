@@ -5,6 +5,11 @@
 var SISTEMA = 'Você resume notícias em português do Brasil. Responda SOMENTE com tópicos curtos, uma frase cada, ' +
   'um por linha, começando com "- ". Use apenas informações do texto; não invente nem opine.';
 
+// O Chrome pede um idioma de saída declarado e só aceita [de, en, es, fr, ja]; português não está na lista.
+// Declaramos espanhol (o mais próximo) e pedimos português no prompt: testado no Chrome 156, a resposta
+// sai em português com matéria em pt e em en. As MESMAS opções vão em availability() e em create().
+var OPCOES_IA = { expectedOutputs: [{ type: 'text', languages: ['es'] }] };
+
 var sessaoBase = null;
 var criando = null;
 
@@ -22,7 +27,7 @@ function enviar(msg) {
 function obterSessaoBase() {
   if (sessaoBase) return Promise.resolve(sessaoBase);
   if (criando) return criando;
-  criando = LanguageModel.create({ initialPrompts: [{ role: 'system', content: SISTEMA }] })
+  criando = LanguageModel.create(Object.assign({}, OPCOES_IA, { initialPrompts: [{ role: 'system', content: SISTEMA }] }))
     .then(function (s) { sessaoBase = s; return s; })
     .finally(function () { criando = null; });
   return criando;
@@ -35,7 +40,7 @@ async function resumir(texto, n, tabId) {
   }
   if (typeof LanguageModel === 'undefined') return { estado: 'unavailable-offscreen' };
   var disp;
-  try { disp = await LanguageModel.availability(); } catch (e) { return { estado: 'unavailable' }; }
+  try { disp = await LanguageModel.availability(OPCOES_IA); } catch (e) { return { estado: 'unavailable' }; }
   t.disp_ms = Date.now() - t.inicio;
   if (disp !== 'available') return { estado: disp };
 
@@ -101,7 +106,7 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
   }
   if (msg.tipo === 'ia-aquecer') {
     if (typeof LanguageModel === 'undefined') { sendResponse({ ok: false }); return; }
-    LanguageModel.availability().then(function (d) {
+    LanguageModel.availability(OPCOES_IA).then(function (d) {
       if (d !== 'available') { sendResponse({ ok: false, disp: d }); return; }
       obterSessaoBase().then(function () { sendResponse({ ok: true }); }, function () { sendResponse({ ok: false }); });
     }).catch(function () { sendResponse({ ok: false }); });
@@ -112,6 +117,6 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
 // aquece assim que o documento nasce
 try {
   if (typeof LanguageModel !== 'undefined') {
-    LanguageModel.availability().then(function (d) { if (d === 'available') obterSessaoBase().catch(function () {}); }).catch(function () {});
+    LanguageModel.availability(OPCOES_IA).then(function (d) { if (d === 'available') obterSessaoBase().catch(function () {}); }).catch(function () {});
   }
 } catch (e) {}

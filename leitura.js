@@ -670,6 +670,7 @@
           // o download exige clique do usuário, então fica aqui (uma vez só)
           estadoResumo(resumo, 'Baixando o modelo…', true);
           var sDown = await LanguageModel.create({
+            expectedOutputs: [{ type: 'text', languages: ['es'] }],  // idioma declarado, ver ia.js
             monitor: function (m) {
               try {
                 m.addEventListener('downloadprogress', function (e) {

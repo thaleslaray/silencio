@@ -248,7 +248,9 @@ function resumirNaPagina(texto, n) {
     if (typeof LanguageModel === 'undefined') return { estado: 'unavailable' };
     var disp;
     postar('Verificando a IA…', '');
-    try { disp = await LanguageModel.availability(); } catch (e) { return { estado: 'unavailable' }; }
+    // idioma de saída declarado (ver ia.js): o Chrome só aceita [de, en, es, fr, ja]
+    var OPCOES_IA = { expectedOutputs: [{ type: 'text', languages: ['es'] }] };
+    try { disp = await LanguageModel.availability(OPCOES_IA); } catch (e) { return { estado: 'unavailable' }; }
     if (disp !== 'available') return { estado: disp };
 
     var sessao = null;
@@ -259,6 +261,7 @@ function resumirNaPagina(texto, n) {
       });
       postar('Abrindo a sessão de IA…', '');
       sessao = await LanguageModel.create({
+        expectedOutputs: OPCOES_IA.expectedOutputs,
         initialPrompts: [{
           role: 'system',
           content: 'Você resume notícias em português do Brasil. Responda SOMENTE com tópicos curtos, uma frase cada, ' +
